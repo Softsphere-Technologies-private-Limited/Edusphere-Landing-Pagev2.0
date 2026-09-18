@@ -1,0 +1,14 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /demo_requests/{document} {
+      allow read, write: if true;
+    }
+    match /verified_demos/{document} {
+      allow read, write: if true;
+    }
+    match /admin_users/{document} {
+      allow read, write: if true;
+    }
+  }
+}

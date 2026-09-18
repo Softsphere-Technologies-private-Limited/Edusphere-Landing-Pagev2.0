@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800;900&family=JetBrains+Mono:wght@400;600;700;800&display=swap');
+
+:root {
+  --color-emerald-primary: #00875A;
+  --color-teal-cyan: #00C896;
+  --color-dark-slate: #0F172A;
+  --color-deep-navy: #090D16;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: #0F172A;
+  color: #F8FAFC;
+  overflow-x: hidden;
+  selection-background-color: #00C896;
+  selection-color: #0F172A;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Syne', sans-serif;
+  letter-spacing: -0.03em;
+}
+
+.font-mono-code {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Bold Typography Outline Stroke Effect */
+.text-stroke-emerald {
+  -webkit-text-stroke: 1.5px #00C896;
+  color: transparent;
+}
+
+.text-stroke-white {
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.4);
+  color: transparent;
+}
+
+.text-stroke-thick {
+  -webkit-text-stroke: 2px #00C896;
+  color: transparent;
+}
+
+/* Glassmorphism helper utilities */
+.glass-panel {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 200, 150, 0.2);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.glass-card-hover {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card-hover:hover {
+  border-color: rgba(0, 200, 150, 0.5);
+  box-shadow: 0 12px 32px -8px rgba(0, 200, 150, 0.3);
+  transform: translateY(-4px);
+}
+
+/* Gradient Text Mask */
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #00C896 0%, #00875A 60%, #38BDF8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #F59E0B 0%, #FCD34D 50%, #10B981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Bold Theme Button Styles */
+.btn-pill-emerald {
+  background-color: #00875A;
+  color: #FFFFFF;
+  border-radius: 9999px;
+  font-weight: 800;
+  font-size: 0.875rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 20px rgba(0, 135, 90, 0.4);
+}
+
+.btn-pill-emerald:hover {
+  background-color: #00C896;
+  box-shadow: 0 0 30px rgba(0, 200, 150, 0.6);
+  transform: translateY(-2px);
+}
+
+/* Glowing Elements */
+.glow-emerald {
+  box-shadow: 0 0 35px rgba(0, 200, 150, 0.35);
+}
+
+.glow-emerald-lg {
+  box-shadow: 0 0 60px rgba(0, 200, 150, 0.45);
+}
+
+/* Magnet Button Pulse */
+@keyframes pulseGlow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(0, 200, 150, 0.4), 0 0 40px rgba(0, 135, 90, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(0, 200, 150, 0.7), 0 0 60px rgba(0, 135, 90, 0.4);
+  }
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 3s infinite ease-in-out;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #090D16;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 200, 150, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00875A;
+}
+
+/* SVG Stroke Draw Animation keyframe helper */
+@keyframes drawStroke {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.svg-draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: drawStroke 2.5s ease-out forwards;
+}
+
