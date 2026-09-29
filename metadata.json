@@ -1,0 +1,6 @@
+{
+  "name": "EduSphere - Smart School Platform",
+  "description": "Bharat's Next Generation Smart School ERP Platform featuring interactive 3D module showcases, kinetic scroll animations, and real-time metrics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
