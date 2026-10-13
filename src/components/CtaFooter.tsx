@@ -5,7 +5,6 @@ import {
   Linkedin,
   Facebook,
   Instagram,
-  ShieldCheck,
 } from 'lucide-react';
 
 interface CtaFooterProps {
@@ -266,17 +265,6 @@ export const CtaFooter: React.FC<CtaFooterProps> = ({
                     Book Walkthrough
                   </button>
                 </li>
-                {onOpenLeadsDashboard && (
-                  <li>
-                    <button
-                      onClick={onOpenLeadsDashboard}
-                      className="text-emerald-400 font-bold hover:text-emerald-300 transition text-left cursor-pointer flex items-center gap-1.5"
-                    >
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>CRM Portal</span>
-                    </button>
-                  </li>
-                )}
               </ul>
             </div>
 

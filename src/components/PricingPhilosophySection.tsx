@@ -169,7 +169,7 @@ export const PricingPhilosophySection: React.FC<PricingPhilosophySectionProps> =
   return (
     <section
       id="pricing"
-      className="py-24 sm:py-32 bg-[#06151B] relative overflow-hidden border-t border-slate-800/80 scroll-mt-12"
+      className="hidden py-24 sm:py-32 bg-[#06151B] relative overflow-hidden border-t border-slate-800/80 scroll-mt-12"
     >
       {/* Anchor for backward compatibility with #pricing-philosophy */}
       <span id="pricing-philosophy" className="absolute -top-20" aria-hidden="true" />

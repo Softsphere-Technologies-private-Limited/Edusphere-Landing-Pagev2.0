@@ -47,7 +47,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     { name: 'Roles', href: '#roles' },
     { name: 'AI Future', href: '#ai-future' },
     { name: 'Roadmap', href: '#roadmap' },
-    { name: 'Pricing', href: '#pricing' },
     { name: 'Mission', href: '#mission' },
   ];
 
