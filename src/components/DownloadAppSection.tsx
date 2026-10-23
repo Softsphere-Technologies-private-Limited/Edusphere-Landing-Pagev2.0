@@ -21,6 +21,9 @@ export const DownloadAppSection: React.FC = () => {
   const PLAY_STORE_URL =
     'https://play.google.com/store/apps/details?id=com.softsphere.school_app';
 
+  const APP_STORE_URL =
+    'https://apps.apple.com/in/app/edusphere-school-app/id6812996860';
+
   const triggerDownloadNotice = (storeName: string) => {
     setDownloadToast(`Redirecting to EduSphere App on ${storeName}...`);
     setTimeout(() => {
@@ -208,11 +211,10 @@ export const DownloadAppSection: React.FC = () => {
 
                   {/* Apple App Store Badge */}
                   <a
-                    href="https://apps.apple.com/in/app/edusphere-school-app/id6503254921"
+                    href={APP_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       triggerDownloadNotice('Apple App Store');
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
