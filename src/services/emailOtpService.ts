@@ -22,12 +22,17 @@ export async function sendEmailOtp(
   const targetEmail = params.email.trim();
   const otpCode = params.otp || Math.floor(100000 + Math.random() * 900000).toString();
 
+  // Fast 6-second timeout to prevent UI hang if server SMTP port is firewalled on Render
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 6000);
+
   try {
     const response = await fetch('/api/send-otp', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
+      signal: controller.signal,
       body: JSON.stringify({
         email: targetEmail,
         name: params.name,
@@ -37,6 +42,8 @@ export async function sendEmailOtp(
       }),
     });
 
+    clearTimeout(timeoutId);
+
     if (!response.ok) {
       throw new Error(`Server returned status ${response.status}`);
     }
@@ -44,15 +51,16 @@ export async function sendEmailOtp(
     const data = await response.json();
     return {
       success: true,
-      message: data.message || `Verification OTP sent to ${targetEmail}`,
-      otp: otpCode,
+      message: data.message || `Verification OTP generated for ${targetEmail}`,
+      otp: data.otpCode || otpCode,
       emailDispatched: Boolean(data.sentViaEmail),
     };
   } catch (error: any) {
-    console.warn('[EmailOtpService] Endpoint notice:', error);
+    clearTimeout(timeoutId);
+    console.warn('[EmailOtpService] Endpoint or timeout notice:', error);
     return {
       success: true,
-      message: `OTP generated for ${targetEmail}`,
+      message: `Verification code generated for ${targetEmail}`,
       otp: otpCode,
       emailDispatched: false,
     };

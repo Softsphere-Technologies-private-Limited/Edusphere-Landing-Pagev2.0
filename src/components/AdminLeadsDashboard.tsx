@@ -23,6 +23,7 @@ import {
   ExternalLink,
   MessageSquare,
   AlertCircle,
+  Info,
   Eye,
   EyeOff,
   Settings,
@@ -271,18 +272,36 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
   const [mSource, setMSource] = useState('Direct Sales Call');
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
 
-  // SMTP Settings State
-  const [smtpHost, setSmtpHost] = useState<string>('smtp.mailgun.org');
-  const [smtpPort, setSmtpPort] = useState<number>(587);
-  const [smtpUser, setSmtpUser] = useState<string>('praful.akhani19@gmail.com');
+  // Email Gateway Settings State
+  const [emailProvider, setEmailProvider] = useState<'smtp' | 'resend' | 'brevo'>('smtp');
+  const [emailApiKey, setEmailApiKey] = useState<string>('');
+  const [smtpHost, setSmtpHost] = useState<string>('smtppro.zoho.in');
+  const [smtpPort, setSmtpPort] = useState<number>(465);
+  const [smtpUser, setSmtpUser] = useState<string>('support@softspheretechnologies.org');
   const [smtpPass, setSmtpPass] = useState<string>('');
-  const [smtpSecure, setSmtpSecure] = useState<boolean>(false);
-  const [smtpTargetRecipient, setSmtpTargetRecipient] = useState<string>('praful.akhani19@gmail.com');
+  const [smtpSecure, setSmtpSecure] = useState<boolean>(true);
+  const [smtpTargetRecipient, setSmtpTargetRecipient] = useState<string>('support@softspheretechnologies.org');
   const [smtpShowPass, setSmtpShowPass] = useState<boolean>(false);
   const [smtpTestRecipient, setSmtpTestRecipient] = useState<string>('praful.akhani19@gmail.com');
   const [smtpTesting, setSmtpTesting] = useState<boolean>(false);
   const [smtpStatusMsg, setSmtpStatusMsg] = useState<{ text: string; isError: boolean } | null>(null);
   const [smtpConfigured, setSmtpConfigured] = useState<boolean>(false);
+
+  // Fetch saved email gateway config on mount
+  useEffect(() => {
+    fetch('/api/smtp-config')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.configured) setSmtpConfigured(true);
+        if (data.providerType) setEmailProvider(data.providerType);
+        if (data.host) setSmtpHost(data.host);
+        if (data.port) setSmtpPort(data.port);
+        if (data.user) setSmtpUser(data.user);
+        if (data.secure !== undefined) setSmtpSecure(data.secure);
+        if (data.targetRecipient) setSmtpTargetRecipient(data.targetRecipient);
+      })
+      .catch(() => {});
+  }, []);
 
   // Team & User Management State
   const [uName, setUName] = useState<string>('');
@@ -328,31 +347,42 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
     });
   }, []);
 
-  // Preset SMTP Config Helper
-  const applySmtpPreset = (preset: 'gmail' | 'mailgun' | 'brevo' | 'sendgrid' | 'hostinger') => {
-    if (preset === 'gmail') {
+  // Preset Email Gateway Config Helper
+  const applySmtpPreset = (preset: 'zoho-org' | 'zoho-personal' | 'resend' | 'brevo-api' | 'gmail' | 'mailgun' | 'hostinger') => {
+    if (preset === 'zoho-org') {
+      setEmailProvider('smtp');
+      setSmtpHost('smtppro.zoho.in');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+      if (!smtpUser) setSmtpUser('support@softspheretechnologies.org');
+      showToast('Applied Zoho Mail Org (smtppro.zoho.in - Port 465 SSL)');
+    } else if (preset === 'zoho-personal') {
+      setEmailProvider('smtp');
+      setSmtpHost('smtp.zoho.in');
+      setSmtpPort(465);
+      setSmtpSecure(true);
+      showToast('Applied Zoho Personal (smtp.zoho.in - Port 465 SSL)');
+    } else if (preset === 'resend') {
+      setEmailProvider('resend');
+      showToast('Applied Resend REST API (HTTPS Port 443 - Works on Render Free Tier)');
+    } else if (preset === 'brevo-api') {
+      setEmailProvider('brevo');
+      showToast('Applied Brevo REST API (HTTPS Port 443 - Works on Render Free Tier)');
+    } else if (preset === 'gmail') {
+      setEmailProvider('smtp');
       setSmtpHost('smtp.gmail.com');
       setSmtpPort(587);
       setSmtpSecure(false);
       if (!smtpUser) setSmtpUser('praful.akhani19@gmail.com');
       showToast('Applied Gmail SMTP preset (Port 587 TLS)');
     } else if (preset === 'mailgun') {
+      setEmailProvider('smtp');
       setSmtpHost('smtp.mailgun.org');
       setSmtpPort(587);
       setSmtpSecure(false);
       showToast('Applied Mailgun SMTP preset (Port 587)');
-    } else if (preset === 'brevo') {
-      setSmtpHost('smtp-relay.brevo.com');
-      setSmtpPort(587);
-      setSmtpSecure(false);
-      showToast('Applied Brevo SMTP preset (Port 587)');
-    } else if (preset === 'sendgrid') {
-      setSmtpHost('smtp.sendgrid.net');
-      setSmtpPort(587);
-      setSmtpSecure(false);
-      setSmtpUser('apikey');
-      showToast('Applied SendGrid preset (User: apikey)');
     } else if (preset === 'hostinger') {
+      setEmailProvider('smtp');
       setSmtpHost('smtp.hostinger.com');
       setSmtpPort(465);
       setSmtpSecure(true);
@@ -360,7 +390,7 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
     }
   };
 
-  // Save SMTP Config to Server
+  // Save Email Gateway Config to Server
   const handleSaveSmtpConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSmtpStatusMsg(null);
@@ -370,6 +400,8 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          providerType: emailProvider,
+          apiKey: emailApiKey.trim(),
           host: smtpHost.trim(),
           port: Number(smtpPort),
           user: smtpUser.trim(),
@@ -382,8 +414,8 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
       const data = await res.json();
       if (data.success) {
         setSmtpConfigured(Boolean(data.configured));
-        setSmtpStatusMsg({ text: '✅ SMTP Configuration successfully saved and applied to the server!', isError: false });
-        showToast('SMTP Settings updated successfully!');
+        setSmtpStatusMsg({ text: '✅ Email Gateway configuration successfully saved and applied to the server!', isError: false });
+        showToast('Email Settings updated successfully!');
       } else {
         setSmtpStatusMsg({ text: `❌ Failed to save: ${data.message || 'Unknown error'}`, isError: true });
       }
@@ -392,11 +424,18 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
     }
   };
 
-  // Test Outbound SMTP Connection & Test Email
+  // Test Outbound SMTP / API Connection & Test Email
   const handleTestSmtpConnection = async () => {
-    if (!smtpHost || !smtpUser || (!smtpPass && !smtpConfigured)) {
-      setSmtpStatusMsg({ text: '⚠️ Please enter SMTP Host, Username and Password before testing.', isError: true });
-      return;
+    if (emailProvider === 'smtp') {
+      if (!smtpHost || !smtpUser || (!smtpPass && !smtpConfigured)) {
+        setSmtpStatusMsg({ text: '⚠️ Please enter SMTP Host, Username and Password before testing.', isError: true });
+        return;
+      }
+    } else {
+      if (!emailApiKey && !smtpConfigured && !smtpPass) {
+        setSmtpStatusMsg({ text: `⚠️ Please enter your ${emailProvider.toUpperCase()} API Key before testing.`, isError: true });
+        return;
+      }
     }
 
     setSmtpTesting(true);
@@ -407,6 +446,8 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          providerType: emailProvider,
+          apiKey: emailApiKey.trim() || smtpPass.trim(),
           host: smtpHost.trim(),
           port: Number(smtpPort),
           user: smtpUser.trim(),
@@ -420,18 +461,18 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
       if (data.success) {
         setSmtpConfigured(true);
         setSmtpStatusMsg({
-          text: `🎉 Success! Test email delivered to ${smtpTestRecipient.trim() || smtpTargetRecipient.trim()}. Your SMTP credentials and OTP verification system are working perfectly!`,
+          text: `🎉 Success! Test email delivered to ${smtpTestRecipient.trim() || smtpTargetRecipient.trim()} via ${emailProvider.toUpperCase()}! Your outbound email & demo OTP verification gateway are functioning perfectly!`,
           isError: false,
         });
         showToast('Test email sent successfully!');
       } else {
         setSmtpStatusMsg({
-          text: `❌ SMTP Connection Failed: ${data.error || 'Check your credentials and port'}`,
+          text: `❌ Gateway Error: ${data.error || 'Check your credentials and port'}`,
           isError: true,
         });
       }
     } catch (err: any) {
-      setSmtpStatusMsg({ text: `❌ Network error while testing SMTP: ${err.message}`, isError: true });
+      setSmtpStatusMsg({ text: `❌ Network error while testing email gateway: ${err.message}`, isError: true });
     } finally {
       setSmtpTesting(false);
     }
@@ -1878,18 +1919,88 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
                   </div>
                 </div>
 
+                {/* Hosting & Timeout Diagnostic Notice */}
+                <div className="p-4 rounded-2xl bg-sky-950/40 border border-sky-500/30 space-y-2 text-xs">
+                  <div className="flex items-center gap-2 font-bold text-sky-300">
+                    <Info className="w-4 h-4 text-sky-400 shrink-0" />
+                    <span>Render.com Cloud Hosting Notice (eduspherebharat.com)</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 leading-relaxed">
+                    Render.com automatically blocks raw outbound SMTP ports (<strong>25, 465, and 587</strong>) on Free web services, causing direct TCP socket timeouts. Two permanent solutions are supported:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-[11px] pt-1">
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-emerald-500/30 space-y-1">
+                      <div className="font-bold text-emerald-400 flex items-center gap-1.5">
+                        <Zap className="w-3.5 h-3.5" />
+                        <span>Recommended: HTTP REST API (Resend / Brevo)</span>
+                      </div>
+                      <p className="text-slate-400 text-[10px] leading-relaxed">
+                        Sends via standard HTTPS (Port 443), which Render never blocks. Includes 3,000 free emails/month on Resend (resend.com) with 100% instant deliverability.
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-sky-500/30 space-y-1">
+                      <div className="font-bold text-sky-300 flex items-center gap-1.5">
+                        <Server className="w-3.5 h-3.5" />
+                        <span>Direct SMTP (Zoho / Gmail / Hostinger)</span>
+                      </div>
+                      <p className="text-slate-400 text-[10px] leading-relaxed">
+                        To use direct SMTP sockets on Render, upgrade your Render web service from Free to an Individual / Starter ($7/mo) instance, which unblocks ports 465 & 587.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Quick Presets Bar */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-amber-400" />
                     Quick Preset One-Click Setup
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => applySmtpPreset('zoho-org')}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
+                        smtpHost === 'smtppro.zoho.in' && emailProvider === 'smtp'
+                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      <span className="font-black text-white">Zoho Mail (Org)</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Port 465 SSL</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => applySmtpPreset('resend')}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
+                        emailProvider === 'resend'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
+                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      <span className="font-black text-emerald-400">Resend API</span>
+                      <span className="text-[10px] text-slate-400 font-mono">HTTPS 443</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => applySmtpPreset('brevo-api')}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
+                        emailProvider === 'brevo'
+                          ? 'bg-emerald-500/20 border-emerald-500 text-emerald-300 ring-1 ring-emerald-500'
+                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      <span className="font-black text-white">Brevo API</span>
+                      <span className="text-[10px] text-slate-400 font-mono">HTTPS 443</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => applySmtpPreset('gmail')}
                       className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
-                        smtpHost === 'smtp.gmail.com'
+                        smtpHost === 'smtp.gmail.com' && emailProvider === 'smtp'
                           ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
                           : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
                       }`}
@@ -1900,48 +2011,9 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
 
                     <button
                       type="button"
-                      onClick={() => applySmtpPreset('mailgun')}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
-                        smtpHost === 'smtp.mailgun.org'
-                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
-                      }`}
-                    >
-                      <span className="font-black text-white">Mailgun</span>
-                      <span className="text-[10px] text-slate-400 font-mono">Port 587 TLS</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applySmtpPreset('brevo')}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
-                        smtpHost === 'smtp-relay.brevo.com'
-                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
-                      }`}
-                    >
-                      <span className="font-black text-white">Brevo (Sendinblue)</span>
-                      <span className="text-[10px] text-slate-400 font-mono">Port 587 TLS</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => applySmtpPreset('sendgrid')}
-                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
-                        smtpHost === 'smtp.sendgrid.net'
-                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
-                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
-                      }`}
-                    >
-                      <span className="font-black text-white">SendGrid</span>
-                      <span className="text-[10px] text-slate-400 font-mono">Port 587 TLS</span>
-                    </button>
-
-                    <button
-                      type="button"
                       onClick={() => applySmtpPreset('hostinger')}
                       className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
-                        smtpHost === 'smtp.hostinger.com'
+                        smtpHost === 'smtp.hostinger.com' && emailProvider === 'smtp'
                           ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
                           : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
                       }`}
@@ -1949,7 +2021,62 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
                       <span className="font-black text-white">Hostinger Mail</span>
                       <span className="text-[10px] text-slate-400 font-mono">Port 465 SSL</span>
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => applySmtpPreset('zoho-personal')}
+                      className={`p-2.5 rounded-xl border text-xs font-bold transition flex flex-col items-center text-center gap-1 cursor-pointer ${
+                        smtpHost === 'smtp.zoho.in' && emailProvider === 'smtp'
+                          ? 'bg-emerald-500/15 border-emerald-500/50 text-emerald-300'
+                          : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
+                      }`}
+                    >
+                      <span className="font-black text-white">Zoho Personal</span>
+                      <span className="text-[10px] text-slate-400 font-mono">Port 465 SSL</span>
+                    </button>
                   </div>
+                </div>
+
+                {/* Gateway Delivery Protocol Selector */}
+                <div className="flex items-center gap-2 p-1.5 bg-slate-950 border border-slate-800 rounded-2xl w-fit">
+                  <button
+                    type="button"
+                    onClick={() => setEmailProvider('smtp')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      emailProvider === 'smtp'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Server className="w-3.5 h-3.5" />
+                    <span>Standard SMTP Protocol</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEmailProvider('resend')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      emailProvider === 'resend'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Resend HTTP API (Port 443)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEmailProvider('brevo')}
+                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      emailProvider === 'brevo'
+                        ? 'bg-emerald-500 text-slate-950 shadow-md'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    <Mail className="w-3.5 h-3.5" />
+                    <span>Brevo HTTP API (Port 443)</span>
+                  </button>
                 </div>
 
                 {/* Status Alert Banner */}
@@ -1972,103 +2099,160 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
 
                 {/* Main Configuration Form */}
                 <form onSubmit={handleSaveSmtpConfig} className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* SMTP Host */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-300">SMTP Relay Host *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. smtp.gmail.com"
-                        value={smtpHost}
-                        onChange={(e) => setSmtpHost(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
-                      />
-                    </div>
-
-                    {/* SMTP Port */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-slate-300">Port *</label>
-                      <div className="flex gap-2">
+                  {emailProvider === 'smtp' ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* SMTP Host */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-300">SMTP Relay Host *</label>
                         <input
-                          type="number"
+                          type="text"
                           required
-                          placeholder="587"
-                          value={smtpPort}
-                          onChange={(e) => {
-                            const p = Number(e.target.value);
-                            setSmtpPort(p);
-                            if (p === 465) setSmtpSecure(true);
-                            if (p === 587 || p === 25 || p === 2525) setSmtpSecure(false);
-                          }}
-                          className="flex-1 px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                          placeholder="e.g. smtppro.zoho.in or smtp.gmail.com"
+                          value={smtpHost}
+                          onChange={(e) => setSmtpHost(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
                         />
-                        <div className="flex items-center gap-1.5 px-3 bg-slate-950 border border-slate-700 rounded-xl">
+                      </div>
+
+                      {/* SMTP Port */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-slate-300">Port *</label>
+                        <div className="flex gap-2">
                           <input
-                            type="checkbox"
-                            id="smtpSecureToggle"
-                            checked={smtpSecure}
-                            onChange={(e) => setSmtpSecure(e.target.checked)}
-                            className="rounded border-slate-700 text-emerald-400 focus:ring-0 cursor-pointer"
+                            type="number"
+                            required
+                            placeholder="465"
+                            value={smtpPort}
+                            onChange={(e) => {
+                              const p = Number(e.target.value);
+                              setSmtpPort(p);
+                              if (p === 465) setSmtpSecure(true);
+                              if (p === 587 || p === 25 || p === 2525) setSmtpSecure(false);
+                            }}
+                            className="flex-1 px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
                           />
-                          <label htmlFor="smtpSecureToggle" className="text-[11px] font-bold text-slate-300 cursor-pointer">
-                            SSL (465)
-                          </label>
+                          <div className="flex items-center gap-1.5 px-3 bg-slate-950 border border-slate-700 rounded-xl">
+                            <input
+                              type="checkbox"
+                              id="smtpSecureToggle"
+                              checked={smtpSecure}
+                              onChange={(e) => setSmtpSecure(e.target.checked)}
+                              className="rounded border-slate-700 text-emerald-400 focus:ring-0 cursor-pointer"
+                            />
+                            <label htmlFor="smtpSecureToggle" className="text-[11px] font-bold text-slate-300 cursor-pointer">
+                              SSL (465)
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Target Recipient Email */}
+                      <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+                        <label className="text-[11px] font-bold text-slate-300">Admin Lead Alert Inbox *</label>
+                        <input
+                          type="email"
+                          required
+                          placeholder="support@softspheretechnologies.org"
+                          value={smtpTargetRecipient}
+                          onChange={(e) => setSmtpTargetRecipient(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                        />
+                      </div>
+
+                      {/* SMTP Username */}
+                      <div className="space-y-1.5 sm:col-span-1 lg:col-span-2">
+                        <label className="text-[11px] font-bold text-slate-300">SMTP Username / Sender Email *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="support@softspheretechnologies.org"
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                        />
+                      </div>
+
+                      {/* SMTP Password / App Password */}
+                      <div className="space-y-1.5 sm:col-span-1 lg:col-span-1">
+                        <label className="text-[11px] font-bold text-slate-300">SMTP Password / App Password *</label>
+                        <div className="relative">
+                          <input
+                            type={smtpShowPass ? 'text' : 'password'}
+                            placeholder={smtpConfigured ? '••••••••••••••••' : 'Enter SMTP Password'}
+                            value={smtpPass}
+                            onChange={(e) => setSmtpPass(e.target.value)}
+                            className="w-full px-3.5 py-2.5 pr-10 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSmtpShowPass(!smtpShowPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          >
+                            {smtpShowPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
                         </div>
                       </div>
                     </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* API Key */}
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label className="text-[11px] font-bold text-slate-300">
+                          {emailProvider === 'resend' ? 'Resend API Key (re_...)' : 'Brevo API Key (xkeysib-...)'} *
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={smtpShowPass ? 'text' : 'password'}
+                            required={!smtpConfigured}
+                            placeholder={emailProvider === 'resend' ? 're_123456789abcdef...' : 'xkeysib-123456789...'}
+                            value={emailApiKey}
+                            onChange={(e) => setEmailApiKey(e.target.value)}
+                            className="w-full px-3.5 py-2.5 pr-10 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setSmtpShowPass(!smtpShowPass)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                          >
+                            {smtpShowPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-slate-400">
+                          Get a free API key at <a href={emailProvider === 'resend' ? 'https://resend.com' : 'https://brevo.com'} target="_blank" rel="noreferrer" className="text-emerald-400 underline">{emailProvider === 'resend' ? 'resend.com' : 'brevo.com'}</a>. Uses HTTPS Port 443 — 100% works on Render!
+                        </p>
+                      </div>
 
-                    {/* Target Recipient Email */}
-                    <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
-                      <label className="text-[11px] font-bold text-slate-300">Admin Lead Alert Inbox *</label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="praful.akhani19@gmail.com"
-                        value={smtpTargetRecipient}
-                        onChange={(e) => setSmtpTargetRecipient(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
-                      />
-                    </div>
-
-                    {/* SMTP Username */}
-                    <div className="space-y-1.5 sm:col-span-1 lg:col-span-2">
-                      <label className="text-[11px] font-bold text-slate-300">SMTP Username / Sender Email *</label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="praful.akhani19@gmail.com"
-                        value={smtpUser}
-                        onChange={(e) => setSmtpUser(e.target.value)}
-                        className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
-                      />
-                    </div>
-
-                    {/* SMTP Password / App Password */}
-                    <div className="space-y-1.5 sm:col-span-1 lg:col-span-1">
-                      <label className="text-[11px] font-bold text-slate-300">SMTP Password / App Password *</label>
-                      <div className="relative">
+                      {/* Admin Lead Alert Inbox */}
+                      <div className="space-y-1.5 sm:col-span-1">
+                        <label className="text-[11px] font-bold text-slate-300">Admin Lead Alert Inbox *</label>
                         <input
-                          type={smtpShowPass ? 'text' : 'password'}
-                          placeholder={smtpConfigured ? '••••••••••••••••' : 'Enter 16-char App Password'}
-                          value={smtpPass}
-                          onChange={(e) => setSmtpPass(e.target.value)}
-                          className="w-full px-3.5 py-2.5 pr-10 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                          type="email"
+                          required
+                          placeholder="support@softspheretechnologies.org"
+                          value={smtpTargetRecipient}
+                          onChange={(e) => setSmtpTargetRecipient(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
                         />
-                        <button
-                          type="button"
-                          onClick={() => setSmtpShowPass(!smtpShowPass)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
-                        >
-                          {smtpShowPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
+                      </div>
+
+                      {/* Sender Email */}
+                      <div className="space-y-1.5 sm:col-span-2">
+                        <label className="text-[11px] font-bold text-slate-300">Verified Sender Email / Domain *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder={emailProvider === 'resend' ? 'onboarding@resend.dev or support@yourdomain.com' : 'support@softspheretechnologies.org'}
+                          value={smtpUser}
+                          onChange={(e) => setSmtpUser(e.target.value)}
+                          className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white font-mono outline-none focus:border-emerald-400 transition"
+                        />
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
                     <p className="text-[11px] text-slate-400">
-                      💡 For Gmail/Google Workspace, create a 16-character <strong>App Password</strong> under your Google Account Security settings.
+                      💡 For Zoho Mail, use your custom domain email and an App-Specific Password.
                     </p>
 
                     <button
@@ -2076,7 +2260,7 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
                       className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-teal-400 to-emerald-400 text-slate-950 font-black text-xs shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition cursor-pointer flex items-center justify-center gap-2"
                     >
                       <Check className="w-4 h-4" />
-                      <span>Save SMTP Settings</span>
+                      <span>Save Gateway Settings</span>
                     </button>
                   </div>
                 </form>

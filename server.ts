@@ -27,25 +27,38 @@ function formatSmtpError(err: any): string {
     return 'Connection failed ("Greeting never received"). This usually happens when the Port and Security (SSL/TLS) settings mismatch. Note: Port 587 uses TLS (SSL OFF), while Port 465 requires SSL (SSL ON). Also verify the SMTP host server address.';
   }
   if (err.code === 'EAUTH' || err.responseCode === 535 || msg.includes('Invalid login') || msg.includes('Username and Password not accepted')) {
-    return 'SMTP Authentication Failed (535): Invalid SMTP username or password. Please double check your SMTP credentials.';
+    return 'SMTP Authentication Failed (535): Invalid SMTP username or password. Please double check your SMTP credentials or App Password.';
   }
-  if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT' || msg.includes('timeout')) {
-    return 'Connection timed out. Unable to reach the specified SMTP host server or port. Please check your host server domain and port.';
+  if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT' || msg.includes('timeout') || msg.includes('timed out')) {
+    return 'Connection timed out on port 465/587. Note: If your live website (eduspherebharat.com) is hosted on Render free tier, Render blocks outbound raw SMTP ports (25, 465, 587). Recommended solutions: 1) Switch to the HTTP REST API option (Resend / Brevo) in the Gateway below which sends via HTTPS port 443 and is never blocked, OR 2) Upgrade your Render service to a Starter ($7/mo) paid plan which unblocks ports 465 & 587.';
   }
   if (err.code === 'ENOTFOUND') {
-    return 'SMTP Host Not Found (ENOTFOUND). Please verify the SMTP host server address (e.g. smtp.mailgun.org).';
+    return 'SMTP Host Not Found (ENOTFOUND). Please verify the SMTP host server address (e.g. smtppro.zoho.in or smtp.gmail.com).';
   }
   if (err.code === 'ECONNREFUSED') {
     return 'Connection Refused (ECONNREFUSED). The remote host rejected connection on this port.';
   }
-  return msg || 'Failed to connect to SMTP server.';
+  return msg || 'Failed to connect to email gateway.';
 }
 import fs from 'fs';
 
 const SMTP_FILE_PATH = '/tmp/smtp_config.json';
 
-function loadSmtpConfig() {
-  const defaultConfig = {
+interface SmtpServerConfig {
+  providerType?: 'smtp' | 'resend' | 'brevo';
+  apiKey?: string;
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  secure: boolean;
+  targetRecipient: string;
+}
+
+function loadSmtpConfig(): SmtpServerConfig {
+  const defaultConfig: SmtpServerConfig = {
+    providerType: (process.env.EMAIL_PROVIDER as any) || 'smtp',
+    apiKey: process.env.RESEND_API_KEY || process.env.BREVO_API_KEY || '',
     host: process.env.SMTP_HOST || '',
     port: Number(process.env.SMTP_PORT) || 587,
     user: process.env.SMTP_USER || 'praful.akhani19@gmail.com',
@@ -75,6 +88,102 @@ function saveSmtpConfig(config: typeof activeSmtpConfig) {
     console.error('Error saving SMTP config file:', err);
   }
 }
+
+async function sendEmailUniversal(params: {
+  providerType?: string;
+  apiKey?: string;
+  host?: string;
+  port?: number;
+  user?: string;
+  pass?: string;
+  secure?: boolean;
+  fromName?: string;
+  fromEmail?: string;
+  to: string;
+  subject: string;
+  html: string;
+}): Promise<{ success: boolean; messageId?: string }> {
+  const provider = params.providerType || 'smtp';
+  const fromName = params.fromName || 'EduSphere Smart School ERP';
+  const fromEmail = params.fromEmail || params.user || 'support@softspheretechnologies.org';
+
+  if (provider === 'resend') {
+    const key = params.apiKey || params.pass;
+    if (!key) throw new Error('Missing Resend API Key. Please enter your Resend API Key (re_...).');
+    const response = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: `${fromName} <${fromEmail}>`,
+        to: [params.to],
+        subject: params.subject,
+        html: params.html,
+      }),
+    });
+    const data: any = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || data?.error?.message || `Resend API Error (${response.status})`);
+    }
+    return { success: true, messageId: data.id };
+  }
+
+  if (provider === 'brevo') {
+    const key = params.apiKey || params.pass;
+    if (!key) throw new Error('Missing Brevo API Key. Please enter your Brevo API Key.');
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': key,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { name: fromName, email: fromEmail },
+        to: [{ email: params.to }],
+        subject: params.subject,
+        htmlContent: params.html,
+      }),
+    });
+    const data: any = await response.json();
+    if (!response.ok) {
+      throw new Error(data?.message || `Brevo API Error (${response.status})`);
+    }
+    return { success: true, messageId: data.messageId };
+  }
+
+  // Standard SMTP (Zoho, Gmail, Hostinger, Mailgun, etc.)
+  const host = params.host;
+  const port = params.port || 587;
+  const user = params.user;
+  const pass = params.pass;
+  const secure = resolveSmtpSecure(port, params.secure);
+
+  if (!host) throw new Error('Missing SMTP Host Server (e.g. smtppro.zoho.in or smtp.gmail.com).');
+  if (!user || !pass) throw new Error('Missing SMTP Credentials! Please enter your SMTP Username and Password/App Password.');
+
+  const transporter = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: { user, pass },
+    tls: { rejectUnauthorized: false },
+    connectionTimeout: 8000,
+    greetingTimeout: 8000,
+    socketTimeout: 8000,
+  });
+
+  const info = await transporter.sendMail({
+    from: `"${fromName}" <${user}>`,
+    to: params.to,
+    subject: params.subject,
+    html: params.html,
+  });
+
+  return { success: true, messageId: info.messageId };
+}
+
 
 async function startServer() {
   const app = express();
@@ -204,23 +313,32 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
 
   // Get current SMTP configuration status
   app.get('/api/smtp-config', (req, res) => {
+    const isConfigured = Boolean(
+      (activeSmtpConfig.providerType && activeSmtpConfig.providerType !== 'smtp' && (activeSmtpConfig.apiKey || activeSmtpConfig.pass)) ||
+      (activeSmtpConfig.user && activeSmtpConfig.pass && activeSmtpConfig.host)
+    );
+
     res.json({
-      configured: Boolean(activeSmtpConfig.user && activeSmtpConfig.pass),
+      configured: isConfigured,
+      providerType: activeSmtpConfig.providerType || 'smtp',
+      apiKey: activeSmtpConfig.apiKey ? '••••••••' : '',
       host: activeSmtpConfig.host,
       port: activeSmtpConfig.port,
       user: activeSmtpConfig.user,
       secure: activeSmtpConfig.secure,
       targetRecipient: activeSmtpConfig.targetRecipient || 'praful.akhani19@gmail.com',
-      hasPass: Boolean(activeSmtpConfig.pass),
+      hasPass: Boolean(activeSmtpConfig.pass || activeSmtpConfig.apiKey),
     });
   });
 
   // Save/Update SMTP configuration via Admin Dashboard
   app.post('/api/smtp-config', (req, res) => {
-    const { host, port, user, pass, secure, targetRecipient } = req.body;
+    const { providerType, apiKey, host, port, user, pass, secure, targetRecipient } = req.body;
     
-    if (host) activeSmtpConfig.host = host;
-    if (port) activeSmtpConfig.port = Number(port);
+    if (providerType !== undefined) activeSmtpConfig.providerType = providerType;
+    if (apiKey !== undefined && apiKey !== '') activeSmtpConfig.apiKey = apiKey;
+    if (host !== undefined) activeSmtpConfig.host = host;
+    if (port !== undefined) activeSmtpConfig.port = Number(port);
     if (user !== undefined) activeSmtpConfig.user = user;
     if (pass !== undefined && pass !== '') activeSmtpConfig.pass = pass;
     if (secure !== undefined) activeSmtpConfig.secure = Boolean(secure);
@@ -228,13 +346,19 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
 
     saveSmtpConfig(activeSmtpConfig);
 
-    console.log(`[SMTP CONFIG UPDATED] Host: ${activeSmtpConfig.host}, User: ${activeSmtpConfig.user}, Target: ${activeSmtpConfig.targetRecipient}`);
+    console.log(`[EMAIL GATEWAY UPDATED] Provider: ${activeSmtpConfig.providerType || 'smtp'}, Host: ${activeSmtpConfig.host}, User: ${activeSmtpConfig.user}, Target: ${activeSmtpConfig.targetRecipient}`);
+
+    const isConfigured = Boolean(
+      (activeSmtpConfig.providerType && activeSmtpConfig.providerType !== 'smtp' && (activeSmtpConfig.apiKey || activeSmtpConfig.pass)) ||
+      (activeSmtpConfig.user && activeSmtpConfig.pass && activeSmtpConfig.host)
+    );
 
     res.json({
       success: true,
-      message: 'SMTP settings updated successfully.',
-      configured: Boolean(activeSmtpConfig.user && activeSmtpConfig.pass),
+      message: 'Email Gateway settings updated successfully.',
+      configured: isConfigured,
       config: {
+        providerType: activeSmtpConfig.providerType || 'smtp',
         host: activeSmtpConfig.host,
         port: activeSmtpConfig.port,
         user: activeSmtpConfig.user,
@@ -247,47 +371,51 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
   // Test Email Endpoint
   app.post('/api/test-email', async (req, res) => {
     const targetEmail = req.body.email || activeSmtpConfig.targetRecipient || 'praful.akhani19@gmail.com';
+    const providerType = req.body.providerType || activeSmtpConfig.providerType || 'smtp';
+    const apiKey = (req.body.apiKey && req.body.apiKey.trim()) ? req.body.apiKey.trim() : activeSmtpConfig.apiKey;
     const host = (req.body.host && req.body.host.trim()) ? req.body.host.trim() : activeSmtpConfig.host;
     const port = Number(req.body.port) || activeSmtpConfig.port || 587;
     const user = (req.body.user && req.body.user.trim()) ? req.body.user.trim() : activeSmtpConfig.user;
     const pass = (req.body.pass && req.body.pass.trim()) ? req.body.pass.trim() : activeSmtpConfig.pass;
     const secure = resolveSmtpSecure(port, req.body.secure !== undefined ? Boolean(req.body.secure) : activeSmtpConfig.secure);
 
-    if (!host) {
+    if (providerType === 'smtp' && !host) {
       return res.status(200).json({
         success: false,
-        error: 'Missing SMTP Host Server! Please enter your outbound SMTP host address (e.g. smtp.mailgun.org or mail.yourdomain.com).',
+        error: 'Missing SMTP Host Server! Please enter your outbound SMTP host address (e.g. smtppro.zoho.in or smtp.gmail.com).',
       });
     }
 
-    if (!user || !pass) {
+    if (providerType === 'smtp' && (!user || !pass)) {
       return res.status(200).json({
         success: false,
         error: 'Missing SMTP Credentials! Please enter your SMTP Username and Password/API Token.',
       });
     }
 
+    if ((providerType === 'resend' || providerType === 'brevo') && (!apiKey && !pass)) {
+      return res.status(200).json({
+        success: false,
+        error: `Missing API Key for ${providerType.toUpperCase()}! Please enter your ${providerType.toUpperCase()} API Key.`,
+      });
+    }
+
     try {
-      const transporter = nodemailer.createTransport({
+      await sendEmailUniversal({
+        providerType,
+        apiKey: apiKey || pass,
         host,
         port,
+        user,
+        pass,
         secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-        connectionTimeout: 15000,
-        greetingTimeout: 15000,
-        socketTimeout: 15000,
-      });
-
-      await transporter.sendMail({
-        from: `"EduSphere Smart School ERP" <${user}>`,
         to: targetEmail,
-        subject: `✅ Test Email: EduSphere Lead Notification System`,
+        subject: `✅ Test Email: EduSphere Notification Gateway`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 24px; background: #06151B; color: #ffffff; border-radius: 12px; border: 1px solid #00C896;">
-            <h2 style="color: #00C896; margin-top: 0;">EduSphere Custom SMTP Test Successful!</h2>
-            <p style="color: #cbd5e1;">Your lead notification email system is active and verified for <strong>${targetEmail}</strong>.</p>
-            <p style="font-size: 12px; color: #94a3b8;">Sent via EduSphere Smart School ERP Admin Portal at ${new Date().toLocaleString()}</p>
+            <h2 style="color: #00C896; margin-top: 0;">EduSphere Outbound Email Test Successful!</h2>
+            <p style="color: #cbd5e1;">Your outbound lead and OTP notification system (<strong>${providerType.toUpperCase()}</strong>) is active and verified for <strong>${targetEmail}</strong>.</p>
+            <p style="font-size: 12px; color: #94a3b8;">Sent via EduSphere Smart School ERP Portal at ${new Date().toLocaleString()}</p>
           </div>
         `,
       });
@@ -295,6 +423,8 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
       // Update active config if test succeeded
       activeSmtpConfig = { 
         ...activeSmtpConfig,
+        providerType: providerType as any,
+        apiKey: apiKey || activeSmtpConfig.apiKey,
         host, 
         port, 
         user, 
@@ -306,10 +436,10 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
 
       res.json({
         success: true,
-        message: `Test email successfully delivered to ${targetEmail}!`,
+        message: `Test email successfully delivered to ${targetEmail} via ${providerType.toUpperCase()}!`,
       });
     } catch (err: any) {
-      console.error('[SMTP TEST ERROR]', err);
+      console.error('[EMAIL TEST ERROR]', err);
       const errorMsg = formatSmtpError(err);
       res.status(200).json({
         success: false,
@@ -318,41 +448,47 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
     }
   });
 
-
-
-  // API endpoint to dispatch lead emails to praful.akhani19@gmail.com
+  // API endpoint to dispatch OTP emails to leads
   app.post('/api/send-otp', async (req, res) => {
     const { name, email, phone, otpCode } = req.body;
     if (!email || !otpCode) {
       return res.status(400).json({ success: false, error: 'Email and OTP code are required.' });
     }
 
+    const providerType = activeSmtpConfig.providerType || 'smtp';
+    const apiKey = activeSmtpConfig.apiKey || activeSmtpConfig.pass || process.env.RESEND_API_KEY || process.env.BREVO_API_KEY || '';
     const host = activeSmtpConfig.host || process.env.SMTP_HOST || '';
     const port = Number(activeSmtpConfig.port || process.env.SMTP_PORT || 587);
     const user = activeSmtpConfig.user || process.env.SMTP_USER || '';
     const pass = activeSmtpConfig.pass || process.env.SMTP_PASS || '';
     const secure = resolveSmtpSecure(port, activeSmtpConfig.secure || process.env.SMTP_SECURE === 'true');
 
-    if (!user || !pass || !host) {
-      console.log(`[OTP EMAIL] Fallback OTP generated: ${otpCode} for ${email}`);
+    const isConfigured = Boolean(
+      (providerType !== 'smtp' && apiKey) ||
+      (user && pass && host)
+    );
+
+    if (!isConfigured) {
+      console.log(`[OTP EMAIL] Direct OTP ready: ${otpCode} for ${email} (Email gateway not fully configured yet)`);
       return res.json({
         success: true,
         sentViaEmail: false,
-        message: 'OTP generated. (SMTP not configured on backend yet)',
+        otpCode,
+        message: 'OTP generated. (Outbound gateway awaiting credentials)',
       });
     }
 
     try {
-      const transporter = nodemailer.createTransport({
+      await sendEmailUniversal({
+        providerType,
+        apiKey,
         host,
         port,
+        user,
+        pass,
         secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-      });
-
-      await transporter.sendMail({
-        from: `"EduSphere Verification" <${user}>`,
+        fromName: 'EduSphere Verification',
+        fromEmail: user,
         to: email,
         subject: `Your EduSphere Verification Code: ${otpCode}`,
         html: `
@@ -368,11 +504,17 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
         `,
       });
 
-      console.log(`[OTP EMAIL SENT] Verification code ${otpCode} dispatched to ${email}`);
-      return res.json({ success: true, sentViaEmail: true, message: `OTP sent to ${email}` });
+      console.log(`[OTP EMAIL SENT] Verification code ${otpCode} dispatched to ${email} via ${providerType.toUpperCase()}`);
+      return res.json({ success: true, sentViaEmail: true, otpCode, message: `OTP sent to ${email}` });
     } catch (err: any) {
       console.error('[OTP EMAIL ERROR]', err);
-      return res.json({ success: true, sentViaEmail: false, error: err.message });
+      // Return success with sentViaEmail: false so frontend receives otpCode and never locks the user out
+      return res.json({
+        success: true,
+        sentViaEmail: false,
+        otpCode,
+        error: formatSmtpError(err),
+      });
     }
   });
 
@@ -449,33 +591,37 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
       </div>
     `;
 
-    if (!user || !pass) {
-      console.warn(`[SMTP WARNING] Cannot send email to ${targetEmail} because SMTP User/Password is not set.`);
+    const providerType = customSmtp?.providerType || activeSmtpConfig.providerType || 'smtp';
+    const apiKey = customSmtp?.apiKey || activeSmtpConfig.apiKey || activeSmtpConfig.pass || '';
+    const isConfigured = Boolean((providerType !== 'smtp' && apiKey) || (user && pass && host));
+
+    if (!isConfigured) {
+      console.warn(`[GATEWAY WARNING] Cannot send email to ${targetEmail} because gateway is not configured.`);
       return res.status(200).json({
         success: false,
-        emailStatus: 'SMTP_NOT_CONFIGURED',
-        message: `Lead saved to database, but real email delivery requires SMTP credentials (e.g. Gmail App Password). Configure it in Admin Portal > Email Settings.`,
+        emailStatus: 'GATEWAY_NOT_CONFIGURED',
+        message: `Lead saved to database, but real email delivery requires outbound email credentials. Configure it in Admin Portal > Email Settings.`,
         targetEmail,
       });
     }
 
     try {
-      const transporter = nodemailer.createTransport({
+      await sendEmailUniversal({
+        providerType,
+        apiKey,
         host,
         port,
+        user,
+        pass,
         secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-      });
-
-      await transporter.sendMail({
-        from: `"EduSphere CRM Leads" <${user}>`,
+        fromName: 'EduSphere CRM Leads',
+        fromEmail: user,
         to: targetEmail,
         subject: `🚀 New EduSphere Live Demo Lead: ${school} (${name})`,
         html: htmlContent,
       });
 
-      console.log(`[SMTP SUCCESS] Real lead email dispatched to ${targetEmail}`);
+      console.log(`[EMAIL SUCCESS] Lead notification dispatched to ${targetEmail} via ${providerType.toUpperCase()}`);
 
       // 2. Dispatch automated Thank You confirmation email directly to the lead
       let leadThankYouSent = false;
@@ -519,12 +665,21 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
             </div>
           `;
 
-          await transporter.sendMail({
-            from: `"EduSphere ERP Team" <${user}>`,
+          await sendEmailUniversal({
+            providerType,
+            apiKey,
+            host,
+            port,
+            user,
+            pass,
+            secure,
+            fromName: 'EduSphere ERP Team',
+            fromEmail: user,
             to: email,
             subject: `🎉 Thank You for Requesting an EduSphere Smart School Demo, ${name}!`,
             html: thankYouHtml,
           });
+
           leadThankYouSent = true;
           console.log(`[THANK YOU EMAIL SENT] Personalized confirmation dispatched to lead: ${email}`);
         } catch (thankYouErr) {
@@ -565,28 +720,24 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
     const pass = activeSmtpConfig.pass || process.env.SMTP_PASS || '';
     const secure = resolveSmtpSecure(port, activeSmtpConfig.secure || process.env.SMTP_SECURE === 'true');
 
+    const providerType = activeSmtpConfig.providerType || 'smtp';
+    const apiKey = activeSmtpConfig.apiKey || activeSmtpConfig.pass || '';
+    const isConfigured = Boolean((providerType !== 'smtp' && apiKey) || (user && pass && host));
+
     const appHost = getAppHost(req);
     const resetUrl = `${appHost}/?action=reset-password&email=${encodeURIComponent(email)}&token=${encodeURIComponent(resetToken || '')}`;
     const loginUrl = `${appHost}/?action=admin-login`;
 
-    if (!user || !pass || !host) {
+    if (!isConfigured) {
       return res.json({
         success: true,
         sentViaEmail: false,
-        message: 'Account created in system. (SMTP server not configured for email dispatch yet)',
+        message: 'Account created in system. (Email gateway not configured for email dispatch yet)',
         resetUrl,
       });
     }
 
     try {
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-      });
-
       const roleLabel = role === 'SUPER_ADMIN' ? 'Super Administrator' : 'Team Member / Staff';
 
       const emailHtml = `
@@ -648,8 +799,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
         </div>
       `;
 
-      await transporter.sendMail({
-        from: `"EduSphere ERP Super Admin" <${user}>`,
+      await sendEmailUniversal({
+        providerType,
+        apiKey,
+        host,
+        port,
+        user,
+        pass,
+        secure,
+        fromName: 'EduSphere ERP Super Admin',
+        fromEmail: user,
         to: email,
         subject: `🔑 Your EduSphere Admin Account Details & Password Reset Link`,
         html: emailHtml,
@@ -680,6 +839,8 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
       return res.status(400).json({ success: false, error: 'Email and reset token are required.' });
     }
 
+    const providerType = activeSmtpConfig.providerType || 'smtp';
+    const apiKey = activeSmtpConfig.apiKey || activeSmtpConfig.pass || '';
     const host = activeSmtpConfig.host || process.env.SMTP_HOST || '';
     const port = Number(activeSmtpConfig.port || process.env.SMTP_PORT || 587);
     const user = activeSmtpConfig.user || process.env.SMTP_USER || '';
@@ -689,23 +850,18 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
     const appHost = getAppHost(req);
     const resetUrl = `${appHost}/?action=reset-password&email=${encodeURIComponent(email)}&token=${encodeURIComponent(resetToken)}`;
 
-    if (!user || !pass || !host) {
+    const isConfigured = Boolean((providerType !== 'smtp' && apiKey) || (user && pass && host));
+
+    if (!isConfigured) {
       return res.json({
         success: true,
         sentViaEmail: false,
-        message: 'Password reset link generated. (SMTP server not configured yet)',
+        message: 'Password reset link generated. (Email gateway not configured yet)',
         resetUrl,
       });
     }
 
     try {
-      const transporter = nodemailer.createTransport({
-        host,
-        port,
-        secure,
-        auth: { user, pass },
-        tls: { rejectUnauthorized: false },
-      });
 
       const lockNote = isLocked
         ? '<p style="color: #f87171; background: #450a0a; border: 1px solid #991b1b; padding: 12px; border-radius: 8px; font-size: 13px;">⚠️ Note: Your account was locked after 3 failed login attempts. Clicking the link below will allow you to set a new password and automatically unlock your account.</p>'
@@ -751,8 +907,16 @@ Sitemap: ${req.protocol}://${req.get('host')}/sitemap.xml
         </div>
       `;
 
-      await transporter.sendMail({
-        from: `"EduSphere ERP Security" <${user}>`,
+      await sendEmailUniversal({
+        providerType,
+        apiKey,
+        host,
+        port,
+        user,
+        pass,
+        secure,
+        fromName: 'EduSphere ERP Security',
+        fromEmail: user,
         to: email,
         subject: `🔒 EduSphere Password Reset Link for ${email}`,
         html: emailHtml,
