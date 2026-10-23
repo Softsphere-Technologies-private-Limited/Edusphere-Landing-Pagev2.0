@@ -68,9 +68,14 @@ export async function sendEmailOtp(
 }
 
 /**
- * Validates the user-entered OTP against the generated Email OTP
+ * Validates the user-entered OTP against the generated Email OTP (Strict genuine verification)
  */
 export function verifyEmailCode(inputOtp: string, expectedOtp: string): boolean {
   const cleanInput = inputOtp.trim();
-  return cleanInput === expectedOtp || cleanInput === '123456';
+  const cleanExpected = (expectedOtp || '').trim();
+  if (!cleanInput || !cleanExpected || cleanInput.length !== 6) {
+    return false;
+  }
+  return cleanInput === cleanExpected;
 }
+
