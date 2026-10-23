@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import {
   Smartphone,
   CheckCircle2,
-  QrCode,
   Sparkles,
   Star,
   ShieldCheck,
@@ -10,11 +9,9 @@ import {
   CreditCard,
   UserCheck,
   Download,
-  X,
 } from 'lucide-react';
 
 export const DownloadAppSection: React.FC = () => {
-  const [showQrModal, setShowQrModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'parents' | 'teachers' | 'students'>('parents');
   const [downloadToast, setDownloadToast] = useState<string | null>(null);
 
@@ -234,17 +231,6 @@ export const DownloadAppSection: React.FC = () => {
                       </div>
                     </div>
                   </a>
-
-                  {/* Scan QR Code Button */}
-                  <button
-                    type="button"
-                    onClick={() => setShowQrModal(true)}
-                    className="group relative inline-flex items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer text-slate-300 hover:text-white"
-                    title="Scan QR Code to download mobile app"
-                  >
-                    <QrCode className="w-5 h-5 text-[#20B486]" />
-                    <span className="text-xs font-bold">Scan QR</span>
-                  </button>
                 </div>
               </div>
 
@@ -337,98 +323,6 @@ export const DownloadAppSection: React.FC = () => {
         </div>
       </div>
 
-      {/* QR CODE MODAL */}
-      {showQrModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in">
-          <div className="relative w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 text-center shadow-2xl">
-            <button
-              onClick={() => setShowQrModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 transition cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            <div className="w-12 h-12 rounded-2xl bg-[#20B486]/10 text-[#20B486] flex items-center justify-center mx-auto mb-3">
-              <QrCode className="w-6 h-6" />
-            </div>
-
-            <h3 className="text-xl font-black text-white font-display">Scan to Install App</h3>
-            <p className="text-xs text-slate-400 mt-1">Open your smartphone camera to download EduSphere Mobile App.</p>
-
-            {/* Generated QR Code SVG */}
-            <div className="my-5 p-4 bg-white rounded-2xl inline-block shadow-lg border-4 border-emerald-500/30">
-              <svg className="w-36 h-36" viewBox="0 0 100 100" fill="none">
-                <rect width="100" height="100" fill="white" />
-                {/* Top-left position marker */}
-                <rect x="10" y="10" width="25" height="25" fill="#06151B" />
-                <rect x="15" y="15" width="15" height="15" fill="white" />
-                <rect x="18" y="18" width="9" height="9" fill="#20B486" />
-
-                {/* Top-right position marker */}
-                <rect x="65" y="10" width="25" height="25" fill="#06151B" />
-                <rect x="70" y="15" width="15" height="15" fill="white" />
-                <rect x="73" y="18" width="9" height="9" fill="#20B486" />
-
-                {/* Bottom-left position marker */}
-                <rect x="10" y="65" width="25" height="25" fill="#06151B" />
-                <rect x="15" y="70" width="15" height="15" fill="white" />
-                <rect x="18" y="73" width="9" height="9" fill="#20B486" />
-
-                {/* Data modules */}
-                <rect x="42" y="12" width="6" height="6" fill="#06151B" />
-                <rect x="52" y="18" width="6" height="6" fill="#20B486" />
-                <rect x="42" y="28" width="6" height="6" fill="#06151B" />
-
-                <rect x="12" y="42" width="6" height="6" fill="#06151B" />
-                <rect x="24" y="48" width="6" height="6" fill="#20B486" />
-                <rect x="36" y="42" width="6" height="6" fill="#06151B" />
-                <rect x="48" y="48" width="6" height="6" fill="#06151B" />
-                <rect x="60" y="42" width="6" height="6" fill="#20B486" />
-                <rect x="72" y="48" width="6" height="6" fill="#06151B" />
-                <rect x="84" y="42" width="6" height="6" fill="#06151B" />
-
-                <rect x="42" y="62" width="6" height="6" fill="#20B486" />
-                <rect x="54" y="68" width="6" height="6" fill="#06151B" />
-                <rect x="66" y="62" width="6" height="6" fill="#06151B" />
-                <rect x="78" y="68" width="6" height="6" fill="#20B486" />
-
-                <rect x="42" y="82" width="6" height="6" fill="#06151B" />
-                <rect x="52" y="82" width="6" height="6" fill="#20B486" />
-                <rect x="62" y="82" width="6" height="6" fill="#06151B" />
-                <rect x="78" y="82" width="6" height="6" fill="#06151B" />
-              </svg>
-            </div>
-
-            <div className="text-xs font-mono-code text-[#20B486] font-bold mb-3">
-              Compatible with Android 8+ & iOS 14+
-            </div>
-
-            <div className="space-y-2.5 w-full">
-              <a
-                href={PLAY_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => triggerDownloadNotice('Google Play Store')}
-                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#20B486] hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-md shadow-[#20B486]/20 cursor-pointer"
-              >
-                <Download className="w-4 h-4" />
-                <span>Open in Google Play Store</span>
-              </a>
-
-              <a
-                href={APP_STORE_URL}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => triggerDownloadNotice('Apple App Store')}
-                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs transition shadow-md cursor-pointer"
-              >
-                <Download className="w-4 h-4 text-[#20B486]" />
-                <span>Open in Apple App Store</span>
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Download Toast Notification */}
       {downloadToast && (
