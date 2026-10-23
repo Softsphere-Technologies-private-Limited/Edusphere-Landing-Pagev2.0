@@ -173,10 +173,8 @@ export const DownloadAppSection: React.FC = () => {
                     href={PLAY_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       triggerDownloadNotice('Google Play Store');
-                      window.open(PLAY_STORE_URL, '_blank');
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
@@ -216,10 +214,8 @@ export const DownloadAppSection: React.FC = () => {
                     href={APP_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       triggerDownloadNotice('Apple App Store');
-                      window.open(APP_STORE_URL, '_blank');
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
@@ -396,16 +392,29 @@ export const DownloadAppSection: React.FC = () => {
               Compatible with Android 8+ & iOS 14+
             </div>
 
-            <a
-              href={PLAY_STORE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => triggerDownloadNotice('Google Play Store')}
-              className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#20B486] hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-md shadow-[#20B486]/20 cursor-pointer"
-            >
-              <Download className="w-4 h-4" />
-              <span>Open in Google Play Store</span>
-            </a>
+            <div className="space-y-2.5 w-full">
+              <a
+                href={PLAY_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerDownloadNotice('Google Play Store')}
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#20B486] hover:bg-emerald-400 text-slate-950 font-bold text-xs transition shadow-md shadow-[#20B486]/20 cursor-pointer"
+              >
+                <Download className="w-4 h-4" />
+                <span>Open in Google Play Store</span>
+              </a>
+
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => triggerDownloadNotice('Apple App Store')}
+                className="inline-flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-white font-bold text-xs transition shadow-md cursor-pointer"
+              >
+                <Download className="w-4 h-4 text-[#20B486]" />
+                <span>Open in Apple App Store</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
