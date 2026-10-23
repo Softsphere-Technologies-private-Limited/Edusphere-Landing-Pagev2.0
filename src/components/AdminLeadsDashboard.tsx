@@ -1595,6 +1595,25 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
           </div>
         )}
 
+<<<<<<< HEAD
+=======
+        {/* SMTP CONFIG WARNING BANNER */}
+        {!smtpConfigured && activeNavTab !== 'smtp' && (
+          <div className="bg-amber-950/90 border-b border-amber-500/50 px-6 py-3 text-xs text-amber-200 font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <Server className="w-4 h-4 text-amber-400 shrink-0" />
+              <span>Outbound SMTP Server Not Configured! Live email OTP verification & lead alert notifications require SMTP settings (e.g. Hostinger SMTP / Gmail App Password).</span>
+            </div>
+            <button
+              onClick={() => setActiveNavTab('smtp')}
+              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-xl text-xs font-black transition cursor-pointer shrink-0 shadow"
+            >
+              Configure SMTP & OTP Now ⚙️
+            </button>
+          </div>
+        )}
+
+>>>>>>> a5149ce (Initial commit: EduSphere Landing Page v2.0 with SMTP/OTP and full ERP features)
         {/* SCROLLABLE MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 space-y-6">
           {/* TAB 1: OVERVIEW */}
