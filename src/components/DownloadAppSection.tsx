@@ -173,11 +173,8 @@ export const DownloadAppSection: React.FC = () => {
                     href={PLAY_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       triggerDownloadNotice('Google Play Store');
-                      window.open(PLAY_STORE_URL, '_blank');
-                      setShowQrModal(true);
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
@@ -217,11 +214,8 @@ export const DownloadAppSection: React.FC = () => {
                     href={APP_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={(e) => {
-                      e.preventDefault();
+                    onClick={() => {
                       triggerDownloadNotice('Apple App Store');
-                      window.open(APP_STORE_URL, '_blank');
-                      setShowQrModal(true);
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
@@ -240,6 +234,17 @@ export const DownloadAppSection: React.FC = () => {
                       </div>
                     </div>
                   </a>
+
+                  {/* Scan QR Code Button */}
+                  <button
+                    type="button"
+                    onClick={() => setShowQrModal(true)}
+                    className="group relative inline-flex items-center gap-2.5 px-4 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer text-slate-300 hover:text-white"
+                    title="Scan QR Code to download mobile app"
+                  >
+                    <QrCode className="w-5 h-5 text-[#20B486]" />
+                    <span className="text-xs font-bold">Scan QR</span>
+                  </button>
                 </div>
               </div>
 
