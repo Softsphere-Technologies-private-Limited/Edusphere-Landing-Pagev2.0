@@ -173,8 +173,10 @@ export const DownloadAppSection: React.FC = () => {
                     href={PLAY_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       triggerDownloadNotice('Google Play Store');
+                      window.open(PLAY_STORE_URL, '_blank');
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
@@ -214,8 +216,10 @@ export const DownloadAppSection: React.FC = () => {
                     href={APP_STORE_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
                       triggerDownloadNotice('Apple App Store');
+                      window.open(APP_STORE_URL, '_blank');
                     }}
                     className="group relative inline-flex items-center gap-3.5 px-6 py-3.5 rounded-2xl bg-slate-950 hover:bg-slate-900 border border-slate-700/80 hover:border-[#20B486] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-[#20B486]/15 cursor-pointer"
                   >
