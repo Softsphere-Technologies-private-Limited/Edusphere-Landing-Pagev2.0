@@ -1595,8 +1595,6 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
           </div>
         )}
 
-<<<<<<< HEAD
-=======
         {/* SMTP CONFIG WARNING BANNER */}
         {!smtpConfigured && activeNavTab !== 'smtp' && (
           <div className="bg-amber-950/90 border-b border-amber-500/50 px-6 py-3 text-xs text-amber-200 font-bold flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-lg">
@@ -1612,8 +1610,6 @@ export const AdminLeadsDashboard: React.FC<AdminLeadsDashboardProps> = ({ isOpen
             </button>
           </div>
         )}
-
->>>>>>> a5149ce (Initial commit: EduSphere Landing Page v2.0 with SMTP/OTP and full ERP features)
         {/* SCROLLABLE MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-6 space-y-6">
           {/* TAB 1: OVERVIEW */}

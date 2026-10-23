@@ -208,11 +208,7 @@ export const DownloadAppSection: React.FC = () => {
 
                   {/* Apple App Store Badge */}
                   <a
-<<<<<<< HEAD
-                    href="https://apple.com/app-store"
-=======
                     href="https://apps.apple.com/in/app/edusphere-school-app/id6503254921"
->>>>>>> a5149ce (Initial commit: EduSphere Landing Page v2.0 with SMTP/OTP and full ERP features)
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => {
