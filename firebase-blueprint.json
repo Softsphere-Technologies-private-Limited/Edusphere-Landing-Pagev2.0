@@ -1,0 +1,50 @@
+{
+  "entities": {
+    "demo_requests": {
+      "title": "Demo Requests",
+      "description": "Stores initial demo request submissions awaiting verification",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "school": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "phone", "school", "status"]
+    },
+    "verified_demos": {
+      "title": "Verified Demos",
+      "description": "Verified demo bookings confirmed with Firebase OTP",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "school": { "type": "string" },
+        "verifiedAt": { "type": "string", "format": "date-time" },
+        "verificationMethod": { "type": "string" }
+      },
+      "required": ["name", "email", "phone", "school", "verifiedAt"]
+    },
+    "partner_applications": {
+      "title": "Partner Applications",
+      "description": "Channel partner applications submitted from Partner With Us page",
+      "type": "object",
+      "properties": {
+        "fullName": { "type": "string" },
+        "company": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
+        "businessCategory": { "type": "string" },
+        "partnershipModel": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["fullName", "email", "phone", "businessCategory", "partnershipModel", "status"]
+    }
+  }
+}
